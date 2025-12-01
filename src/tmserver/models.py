@@ -15,3 +15,18 @@ class CreateResume(BaseModel):
 class UpdateResume(BaseModel):
     target_role: Optional[str] = None
     content: Optional[Dict[str, Any]] = None
+
+
+class ResumeResponse(BaseModel):
+    id: str
+    target_role: str
+    content: Dict[str, Any]
+    date_uploaded: datetime
+    updated_at: datetime
+
+
+class ListResume(BaseModel):
+    id: str
+    target_role: str
+    date_uploaded: datetime
+    updated_at: datetime

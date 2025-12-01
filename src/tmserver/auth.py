@@ -14,8 +14,9 @@ security = HTTPBearer()
 
 def create_access_token(data: dict):
     data = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=24)
-    data.update({"exp": expire})
+    currentTime = datetime.utcnow()
+    expiredTime = currentTime + timedelta(hours=24)
+    data.update({"exp": expiredTime})
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_token(token: str):
@@ -31,6 +32,8 @@ def verify_token(token: str):
         
 async def get_current_user_id(request: Request):
     token = request.cookies.get("access_token")
+
+    
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 

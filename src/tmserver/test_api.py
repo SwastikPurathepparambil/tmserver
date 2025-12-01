@@ -59,3 +59,16 @@ def test_create_resume(client: TestClient):
         "content": {"summary": "this is my test content"}
     })
     assert check.status_code == 401
+
+
+def test_get_one_resume(client: TestClient, mock_google_token):
+    client.post("/auth/google", json={"token": "some_token"})
+    check = client.post("/resumes", json={
+        "target_role": "SWE",
+        "content": {"summary": "SOme SWE Job for google"}
+    })
+    resume_id = check.json()["id"]
+    finalcheck = client.get(f"/resumes/{resume_id}")
+    assert finalcheck.status_code == 200
+    assert finalcheck.json()["id"] == resume_id
+

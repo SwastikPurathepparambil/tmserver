@@ -52,6 +52,7 @@ async def create_indexes():
         if db.users_set is not None:
             await db.users_set.create_index("google_sub", unique=True)
             await db.users_set.create_index("email")
+
         if db.resumes_set is not None:
             await db.resumes_set.create_index([("user_id", 1), ("is_deleted", 1)])
             await db.resumes_set.create_index("date_made")

@@ -6,7 +6,7 @@ from fastapi import Depends
 from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
 from tmserver.db import connect_to_db_mongo, disconnect_mongo
-from tmserver.models import UserResponse, CreateResume
+from tmserver.models import UserResponse, CreateResume, ListResume, ResumeResponse
 app = FastAPI(title = "Taylor Make API")
 
 def get_db() -> Database:
@@ -103,3 +103,20 @@ async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Dep
         created_at=user["created_at"],
         last_login_at=user["last_login_at"],
     )
+
+@app.get("/resumes", response_model=List[ListResume])
+async def list_resumes(user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
+    res_list = (db.resumes_sets.find({"user_id": user_id, "is_deleted": False}).sort("updated_at", -1))
+  
+    items: list[ListResume] = []
+    for resume in res_list:
+        items.append(
+            ListResume(
+                id=str(resume["_id"]),
+                target_role=resume["target_role"],
+                date_uploaded=resume["date_uploaded"],
+                updated_at=resume["updated_at"],
+            )
+        )
+
+    return items
