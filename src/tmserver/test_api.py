@@ -43,3 +43,12 @@ def test_get_current_user_requires_auth(client: TestClient):
     check = client.get("/auth/me")
     assert check.status_code == 404
     assert check.json()["detail"] == "Not Found"
+
+def test_get_current_user_after_login(client: TestClient, mock_google_token):
+    client.post("/auth/google", json={"token": "some_token"})
+    check = client.get("/auth/me")
+    assert check.status_code == 200
+    text = resp.json()
+    assert text["email"] == "test@icloud.com"
+    assert "created_at" in text
+    assert "last_login_at" in text
