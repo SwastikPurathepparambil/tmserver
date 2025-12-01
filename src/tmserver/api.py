@@ -28,6 +28,16 @@ async def health_check():
         "status": "healthy"
     }
 
+#startup/shutdown
+@app.on_event("startup")
+async def startup_db():
+    await connect_to_db_mongo()
+
+
+@app.on_event("shutdown")
+async def shutdown_db():
+    await disconnect_mongo()
+
 
 #google authentication - we are only using google auth for login
 
@@ -95,7 +105,7 @@ async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_curr
 
 @app.get("/auth/me")
 async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Depends(get_db)):
-    user = await db.users_set.find_one({"_id": ObjectId[user_id]})
+    user = await db.users_set.find_one({"_id": ObjectId(user_id)})
     if not user:
         raise HTTPException(status_code=404, detail="Not Found")
 

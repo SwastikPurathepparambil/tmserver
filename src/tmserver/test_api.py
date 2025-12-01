@@ -123,5 +123,11 @@ def test_delete_resume(client: TestClient, my_google_token):
     check_response = client.get(f"/resumes/{resume_id}")
     assert check_response.status_code == 404
 
-
-
+def test_session_cookie_persists(client: TestClient, mock_google_token):
+    checklogin = client.post("/auth/google", json={"token": "fake-token"})
+    assert checklogin.status_code == 200
+    cookie = client.cookies.get("access_token")
+    assert cookie is not None
+    check_me = client.get("/auth/me")
+    assert check_me.status_code == 200
+    assert check_me.json()["email"] == "test@icloud.com"
