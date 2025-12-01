@@ -5,20 +5,24 @@ import os
 from typing import Optional
 import asyncio
 import certifi
+
 load_dotenv()
+
+
 class Database:
     client: Optional[AsyncIOMotorClient] = None
     database = None
-    users_collection = None
-    resumes_collection = None
+    users_set = None
+    resumes_set = None
+
 db = Database()
 
 async def connect_to_db_mongo():
     try:
-        mongodb_id = os.getenv("MONGODB_ID")
+        mongodb_id = os.getenv("MONGO_URI")
 
         if not mongodb_id:
-            raise RuntimeError("MONGODB_ID is not available.")
+            raise RuntimeError("MONGO_URI is not available.")
 
         db.client = AsyncIOMotorClient(mongodb_id,tlsCAFile=certifi.where())
 
@@ -45,10 +49,12 @@ async def disconnect_mongo():
 
 async def create_indexes():
     try:
-        await db.users_set.create_index("google_subscription", unique=True)
-        await db.users_set.create_index("email")
-        await db.resumes_set.create_index([("user_id", 1), ("is_deleted", 1)])
-        await db.resumes_set.create_index("date_made")
+        if db.users_set is not None:
+            await db.users_set.create_index("google_sub", unique=True)
+            await db.users_set.create_index("email")
+        if db.resumes_set is not None:
+            await db.resumes_set.create_index([("user_id", 1), ("is_deleted", 1)])
+            await db.resumes_set.create_index("date_made")
     except Exception as e3:
         print(f"Error with indexes: {e3}")
 
