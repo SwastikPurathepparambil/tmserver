@@ -38,3 +38,8 @@ def test_google_login_creates_user_and_sets_cookie(client: TestClient, my_google
     assert "id" in body["user"]
     assert "access_token" in check.cookies
     assert check.cookies.get("access_token") is not None
+
+def test_get_current_user_requires_auth(client: TestClient):
+    check = client.get("/auth/me")
+    assert check.status_code == 404
+    assert check.json()["detail"] == "Not Found"

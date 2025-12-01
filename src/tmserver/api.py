@@ -72,3 +72,20 @@ async def google_login(google_token: dict, response: Response, db: Database = De
         "email": user_info["email"]
         }
     }
+
+
+
+@app.get("/auth/me")
+async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Depends(get_db)):
+    user = await db.users_set.find_one({"_id": ObjectId(user_id)})
+    
+    if not user:
+        raise HTTPException(status_code=404, detail = "Not Found")
+
+    return {
+        "id": str(user["_id"]),
+        "email": user.get("email"),
+        "created_at": user.get("created_at"),
+        
+        "last_login_at": user.get("last_login_at")
+    }
