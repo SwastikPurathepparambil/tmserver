@@ -9,7 +9,7 @@ os.environ.setdefault("MONGO_URI", "mongodb://localhost:8000")
 @pytest.fixture
 def client():
     with TestClient(app) as Client:
-        yield
+        yield Client
     
 
 def test_if_healthy(client: TestClient):
@@ -44,7 +44,7 @@ def test_get_current_user_requires_auth(client: TestClient):
     assert check.status_code == 404
     assert check.json()["detail"] == "Not Found"
 
-def test_get_current_user_after_login(client: TestClient, mock_google_token):
+def test_get_current_user_after_login(client: TestClient, my_google_token):
     client.post("/auth/google", json={"token": "some_token"})
     check = client.get("/auth/me")
     assert check.status_code == 200
@@ -61,7 +61,7 @@ def test_create_resume(client: TestClient):
     assert check.status_code == 401
 
 
-def test_get_one_resume(client: TestClient, mock_google_token):
+def test_get_one_resume(client: TestClient, my_google_token):
     client.post("/auth/google", json={"token": "some_token"})
     check = client.post("/resumes", json={
         "target_role": "SWE",
@@ -73,12 +73,12 @@ def test_get_one_resume(client: TestClient, mock_google_token):
     assert finalcheck.json()["id"] == resume_id
 
 
-def test_resume_not_valid(client: TestClient, mock_google_token):
+def test_resume_not_valid(client: TestClient, my_google_token):
     client.post("/auth/google", json={"token": "fake-token"})
     check = client.get("/resumes/notvalidobjectsorry")
     assert check.status_code == 400
 
-def test_create_and_list_all_resumes(client: TestClient, mock_google_token):
+def test_create_and_list_all_resumes(client: TestClient, my_google_token):
     client.post("/auth/google", json={"token": "fake-token"})
     check = client.post("/resumes", json={
         "target_role": "SWE",
@@ -91,5 +91,22 @@ def test_create_and_list_all_resumes(client: TestClient, mock_google_token):
 
     resumes = list_check.json()
     assert any(r["id"] == resume_id for r in resumes)
+
+def test_update_resume(client: TestClient, my_google_token):
+    client.post("/auth/google", json={"token": "fake-token"})
+    check = client.post("/resumes", json={
+        "target_role": "Some previous SWE",
+        "content": {"summary": "Last summers swe internship"}
+    })
+    resume_id = check.json()["id"]
+    check = client.put(f"/resumes/{resume_id}", json={
+        "target_role": "New SWE",
+        "content": {"summary": "This summers swe internship"}
+    })
+    assert check.status_code == 200
+    updatedCheck = check.json()
+    assert updatedCheck["target_role"] == "New SWE"
+    assert updatedCheck["content"]["summary"] == "This summers swe internship"
+
 
 

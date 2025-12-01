@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from tmserver.db import get_database, Database
-from tmserver.auth import verify_google_token, create_access_token
+from tmserver.auth import verify_google_token, create_access_token, get_current_user_id
 from datetime import datetime
 from fastapi import Depends
 from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
 from tmserver.db import connect_to_db_mongo, disconnect_mongo
-from tmserver.models import UserResponse, CreateResume, ListResume, ResumeResponse
+from tmserver.models import UserResponse, CreateResume, ListResume, ResumeResponse, UpdateResume
 app = FastAPI(title = "Taylor Make API")
 
 def get_db() -> Database:
@@ -80,7 +80,7 @@ async def google_login(google_token: dict, response: Response, db: Database = De
 @app.post("/resumes")
 async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
     now = datetime.utcnow()
-        document = {
+    document = {
         "user_id": user_id,
         "target_role": resume_data.target_role,
         "content": resume_data.content,
@@ -96,7 +96,7 @@ async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_curr
 @app.get("/auth/me")
 async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Depends(get_db)):
     user = await db.users_set.find_one({"_id": ObjectId[user_id]})
-     if not user:
+    if not user:
         raise HTTPException(status_code=404, detail="Not Found")
 
     return UserResponse(
@@ -106,7 +106,7 @@ async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Dep
         last_login_at=user["last_login_at"],
     )
 
-@app.get("/resumes", response_model=List[ListResume])
+@app.get("/resumes", response_model=list[ListResume])
 async def list_resumes(user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
     #Sort all resumes by most recent
     res_list = (db.resumes_set.find({"user_id": user_id, "is_deleted": False}).sort("updated_at", -1))
@@ -139,13 +139,37 @@ async def get_resume(resume_id: str,user_id: str = Depends(get_current_user_id),
         }
     )
 
+@app.put("/resumes/{resume_id}", response_model=ResumeResponse)
+async def update_resume(resume_id: str,resume_update: UpdateResume,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
+    # A resume must exist so that we can update it
+    myResume = await db.resumes_set.find_one(
+        {
+        "_id": ObjectId(resume_id),
+        "user_id": user_id,
+        "is_deleted": False
+        })
+
     if not myResume:
         raise HTTPException(status_code=404)
+    now = datetime.utcnow()
+    update_data = {"updated_at": now}
+
+    if resume_update.target_role is not None:
+        update_data["target_role"] = resume_update.target_role
+    if resume_update.content is not None:
+        update_data["content"] = resume_update.content
+
+    await db.resumes_set.update_one(
+        {"_id": resume["_id"]},
+        {"$set": update_data})
+
+    updatedMyResume = await db.resumes_set.find_one({"_id": resume["_id"]})
 
     return ResumeResponse(
-        id=str(myResume["_id"]),
-        target_role=myResume["target_role"],
-        content=myResume["content"],
-        date_uploaded=myResume["date_uploaded"],
-        updated_at=myResume["updated_at"],
+        id=str(updatedMyResume["_id"]),
+        target_role=updatedMyResume["target_role"],
+        content=updatedMyResume["content"],
+        date_uploaded=updatedMyResume["date_uploaded"],
+        updated_at=updatedMyResume["updated_at"],
     )
+
