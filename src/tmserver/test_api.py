@@ -72,3 +72,9 @@ def test_get_one_resume(client: TestClient, mock_google_token):
     assert finalcheck.status_code == 200
     assert finalcheck.json()["id"] == resume_id
 
+
+def test_resume_not_valid(client: TestClient, mock_google_token):
+    client.post("/auth/google", json={"token": "fake-token"})
+    check = client.get("/resumes/notvalidobjectsorry")
+    assert check.status_code == 400
+
