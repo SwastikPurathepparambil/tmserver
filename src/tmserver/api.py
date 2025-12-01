@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import Depends
 from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
+from tmserver.db import connect_to_db_mongo, disconnect_mongo
 app = FastAPI(title = "Taylor Make API")
 
 def get_db() -> Database:
@@ -31,6 +32,7 @@ async def health_check():
 @app.post("/auth/google")
 async def google_login(google_token: dict, response: Response, db: Database = Depends(get_db)):
     user_info = await verify_google_token(google_token["token"])
+    
     now = datetime.utcnow()
     existing = await db.users_set.find_one({"google_sub": user_info["google_sub"]})
 

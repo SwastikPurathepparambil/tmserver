@@ -5,11 +5,12 @@ from tmserver.api import app
 import tmserver.api as api_module
 from tmserver.db import db 
 os.environ.setdefault("DATABASE_NAME", "taylorMake_test")
-
+os.environ.setdefault("MONGO_URI", "mongodb://localhost:8000") 
 @pytest.fixture
 def client():
     with TestClient(app) as Client:
-        yield Client
+        yield
+    
 
 def test_if_healthy(client: TestClient):
     check = client.get("/health")
