@@ -108,5 +108,20 @@ def test_update_resume(client: TestClient, my_google_token):
     assert updatedCheck["target_role"] == "New SWE"
     assert updatedCheck["content"]["summary"] == "This summers swe internship"
 
+def test_delete_resume(client: TestClient, my_google_token):
+    client.post("/auth/google", json={"token": "fake-token"})
+    check = client.post("/resumes", json={
+        "target_role": "Some role",
+        "content": {"summary": "Role doesn't exist anymore, should be deleted"}})
+ 
+    myResume = check.json()["id"]
+
+    delete_check = client.delete(f"/resumes/{resume_id}")
+    assert delete_check.status_code == 200
+    list_resumes = client.get("/resumes")
+    assert all(r["id"] != myResume for r in list_resumes.json())
+    check_response = client.get(f"/resumes/{resume_id}")
+    assert check_response.status_code == 404
+
 
 

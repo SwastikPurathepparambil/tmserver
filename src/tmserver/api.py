@@ -172,4 +172,22 @@ async def update_resume(resume_id: str,resume_update: UpdateResume,user_id: str 
         date_uploaded=updatedMyResume["date_uploaded"],
         updated_at=updatedMyResume["updated_at"],
     )
+@app.delete("/resumes/{resume_id}")
+async def delete_resume(resume_id: str,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
+    myResume = await db.resumes_set.find_one(
+        {
+        "_id": ObjectId(resume_id),
+        "user_id": user_id,
+        "is_deleted": False
+        })
 
+    if not myResume:
+        raise HTTPException(status_code=404)
+    now = datetime.utcnow()
+    update_data = {"updated_at": now}
+
+    await db.resumes_collection.update_one(
+        {"_id": resume["_id"]},
+        {"$set": {"is_deleted": True,"updated_at": datetime.utcnow()}}
+    )
+    return {"message": "Resume has been deleted"}
