@@ -52,3 +52,10 @@ def test_get_current_user_after_login(client: TestClient, mock_google_token):
     assert text["email"] == "test@icloud.com"
     assert "created_at" in text
     assert "last_login_at" in text
+
+def test_create_resume(client: TestClient):
+    check = client.post("/resumes", json={
+        "target_role": "SWE",
+        "content": {"summary": "this is my test content"}
+    })
+    assert check.status_code == 401
