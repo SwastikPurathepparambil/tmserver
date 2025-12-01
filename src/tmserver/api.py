@@ -6,6 +6,7 @@ from fastapi import Depends
 from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
 from tmserver.db import connect_to_db_mongo, disconnect_mongo
+from tmserver.models import UserResponse, CreateResume
 app = FastAPI(title = "Taylor Make API")
 
 def get_db() -> Database:
@@ -72,6 +73,21 @@ async def google_login(google_token: dict, response: Response, db: Database = De
         "email": user_info["email"]
         }
     }
+
+
+@app.post("/resumes")
+async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
+    now = datetime.utcnow()
+        document = {
+        "user_id": user_id,
+        "target_role": resume_data.target_role,
+        "content": resume_data.content,
+        "date_uploaded": now,
+        "updated_at": now,
+        "is_deleted": False
+    }
+    uploading = await db.resumes_set.insert_one(document)
+    return {"id": str(uploading.inserted_id)}
 
 
 
