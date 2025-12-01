@@ -1,12 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends, Response
 from tmserver.db import get_database, Database
 from tmserver.auth import verify_google_token, create_access_token, get_current_user_id
 from datetime import datetime
-from fastapi import Depends
-from fastapi import Response
+from typing import List
+from bson import ObjectId
 from fastapi.middleware.cors import CORSMiddleware
 from tmserver.db import connect_to_db_mongo, disconnect_mongo
 from tmserver.models import UserResponse, CreateResume, ListResume, ResumeResponse, UpdateResume
+
 app = FastAPI(title = "Taylor Make API")
 
 def get_db() -> Database:
@@ -87,7 +88,7 @@ async def google_login(google_token: dict, response: Response, db: Database = De
 
 #resumes have a updated_at date so as to allow for future resume changes
 
-@app.post("/resumes")
+@app.post("/resumes", response_model=ResumeResponse)
 async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
     now = datetime.utcnow()
     document = {
@@ -99,7 +100,13 @@ async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_curr
         "is_deleted": False
     }
     uploading = await db.resumes_set.insert_one(document)
-    return {"id": str(uploading.inserted_id)}
+    return ResumeResponse(
+        id=str(uploading.inserted_id),
+        target_role=resume_data.target_role,
+        content=resume_data.content,
+        date_uploaded=now,
+        updated_at=now
+    )
 
 
 
@@ -116,13 +123,13 @@ async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Dep
         last_login_at=user["last_login_at"],
     )
 
-@app.get("/resumes", response_model=list[ListResume])
+@app.get("/resumes", response_model=List[ListResume])
 async def list_resumes(user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
     #Sort all resumes by most recent
-    res_list = (db.resumes_set.find({"user_id": user_id, "is_deleted": False}).sort("updated_at", -1))
+    res_list = db.resumes_set.find({"user_id": user_id, "is_deleted": False}).sort("updated_at", -1)
   
-    items: list[ListResume] = []
-    for resume in res_list:
+    items=[]
+    async for resume in res_list:
         items.append(
             ListResume(
                 id=str(resume["_id"]),
@@ -151,6 +158,8 @@ async def get_resume(resume_id: str,user_id: str = Depends(get_current_user_id),
 
 @app.put("/resumes/{resume_id}", response_model=ResumeResponse)
 async def update_resume(resume_id: str,resume_update: UpdateResume,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
+    if not ObjectId.is_valid(resume_id):
+        raise HTTPException(status_code=400)
     # A resume must exist so that we can update it
     myResume = await db.resumes_set.find_one(
         {
@@ -170,10 +179,10 @@ async def update_resume(resume_id: str,resume_update: UpdateResume,user_id: str 
         update_data["content"] = resume_update.content
 
     await db.resumes_set.update_one(
-        {"_id": resume["_id"]},
+        {"_id": ObjectId(resume_id)},
         {"$set": update_data})
 
-    updatedMyResume = await db.resumes_set.find_one({"_id": resume["_id"]})
+    updatedMyResume = await db.resumes_set.find_one({"_id": ObjectId(resume_id)})
 
     return ResumeResponse(
         id=str(updatedMyResume["_id"]),
@@ -182,6 +191,7 @@ async def update_resume(resume_id: str,resume_update: UpdateResume,user_id: str 
         date_uploaded=updatedMyResume["date_uploaded"],
         updated_at=updatedMyResume["updated_at"],
     )
+    
 @app.delete("/resumes/{resume_id}")
 async def delete_resume(resume_id: str,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
     myResume = await db.resumes_set.find_one(
@@ -196,8 +206,8 @@ async def delete_resume(resume_id: str,user_id: str = Depends(get_current_user_i
     now = datetime.utcnow()
     update_data = {"updated_at": now}
 
-    await db.resumes_collection.update_one(
-        {"_id": resume["_id"]},
+    await db.resumes_set.update_one(
+        {"_id": ObjectId(resume_id)},
         {"$set": {"is_deleted": True,"updated_at": datetime.utcnow()}}
     )
     return {"message": "Resume has been deleted"}
