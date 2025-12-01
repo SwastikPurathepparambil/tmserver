@@ -20,6 +20,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+#health check
 
 @app.get("/health")
 async def health_check():
@@ -28,7 +29,7 @@ async def health_check():
     }
 
 
-
+#google authentication - we are only using google auth for login
 
 @app.post("/auth/google")
 async def google_login(google_token: dict, response: Response, db: Database = Depends(get_db)):
@@ -74,6 +75,7 @@ async def google_login(google_token: dict, response: Response, db: Database = De
         }
     }
 
+#resumes have a updated_at date so as to allow for future resume changes
 
 @app.post("/resumes")
 async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
@@ -106,7 +108,8 @@ async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Dep
 
 @app.get("/resumes", response_model=List[ListResume])
 async def list_resumes(user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
-    res_list = (db.resumes_sets.find({"user_id": user_id, "is_deleted": False}).sort("updated_at", -1))
+    #Sort all resumes by most recent
+    res_list = (db.resumes_set.find({"user_id": user_id, "is_deleted": False}).sort("updated_at", -1))
   
     items: list[ListResume] = []
     for resume in res_list:
@@ -120,3 +123,29 @@ async def list_resumes(user_id: str = Depends(get_current_user_id),db: Database 
         )
 
     return items
+
+
+@app.get("/resumes/{resume_id}", response_model=ResumeResponse)
+async def get_resume(resume_id: str,user_id: str = Depends(get_current_user_id),db: Database = Depends(get_db)):
+    
+    if not ObjectId.is_valid(resume_id):
+        raise HTTPException(status_code=400)
+
+    myResume = await db.resumes_set.find_one(
+        {
+            "_id": ObjectId(resume_id),
+            "user_id": user_id,
+            "is_deleted": False
+        }
+    )
+
+    if not myResume:
+        raise HTTPException(status_code=404)
+
+    return ResumeResponse(
+        id=str(myResume["_id"]),
+        target_role=myResume["target_role"],
+        content=myResume["content"],
+        date_uploaded=myResume["date_uploaded"],
+        updated_at=myResume["updated_at"],
+    )

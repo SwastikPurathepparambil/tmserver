@@ -17,6 +17,7 @@ class Database:
 
 db = Database()
 
+#Requires atlas mongo db connection -> thats what we have for project
 async def connect_to_db_mongo():
     try:
         mongodb_id = os.getenv("MONGO_URI")
@@ -46,7 +47,7 @@ async def disconnect_mongo():
         db.client.close()
         print("Disconnected from MongoDB")
 
-
+#indexes makes db lookup much more effecient (I read 100x)
 async def create_indexes():
     try:
         if db.users_set is not None:

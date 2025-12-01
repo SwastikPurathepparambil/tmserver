@@ -78,3 +78,18 @@ def test_resume_not_valid(client: TestClient, mock_google_token):
     check = client.get("/resumes/notvalidobjectsorry")
     assert check.status_code == 400
 
+def test_create_and_list_all_resumes(client: TestClient, mock_google_token):
+    client.post("/auth/google", json={"token": "fake-token"})
+    check = client.post("/resumes", json={
+        "target_role": "SWE",
+        "content": {"summary": "UCLA grad pls"},
+    })
+    assert check.status_code == 200
+    resume_id = check.json()["id"]
+    list_check = client.get("/resumes")
+    assert list_check.status_code == 200
+
+    resumes = list_check.json()
+    assert any(r["id"] == resume_id for r in resumes)
+
+

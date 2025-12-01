@@ -12,6 +12,7 @@ ALGORITHM = "HS256"
 
 security = HTTPBearer()
 
+#current experiation time is 24 hours -> change if needed
 def create_access_token(data: dict):
     data = data.copy()
     currentTime = datetime.utcnow()
@@ -29,11 +30,12 @@ def verify_token(token: str):
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
+
         
 async def get_current_user_id(request: Request):
     token = request.cookies.get("access_token")
 
-    
+
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
