@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Response
 from tmserver.db import get_database, Database
-from tmserver.auth import verify_google_token, create_access_token, get_current_user_id
+from tmserver.auth import verify_google_token, create_access_token, get_current_user_id. optional_get_current_user_id
 from datetime import datetime
 from typing import List
 from bson import ObjectId
@@ -111,7 +111,10 @@ async def create_resume(resume_data:CreateResume,user_id: str = Depends(get_curr
 
 
 @app.get("/auth/me")
-async def get_me(user_id: str = Depends(get_current_user_id), db: Database = Depends(get_db)):
+async def get_me(user_id: str | None = Depends(optional_get_current_user_id), db: Database = Depends(get_db)):
+    if user_id is None:
+        return None
+    
     user = await db.users_set.find_one({"_id": ObjectId(user_id)})
     if not user:
         raise HTTPException(status_code=404, detail="Not Found")

@@ -42,6 +42,21 @@ async def get_current_user_id(request: Request):
     user_id = verify_token(token)
     return user_id
 
+     
+async def optional_get_current_user_id(request: Request):
+    token = request.cookies.get("access_token")
+
+
+    if not token:
+        return None
+    try: 
+        user_id = verify_token(token)
+        return user_id
+
+    except HTTPException:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+
 async def verify_google_token(token: str):
     try:
         id_information = id_token.verify_oauth2_token(
