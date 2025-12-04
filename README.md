@@ -52,3 +52,8 @@ For support, questions, or feedback regarding the Tmserver Crew or crewAI.
 - [Chat with our docs](https://chatg.pt/DWjSBZn)
 
 Let's create wonders together with the power and simplicity of crewAI.
+
+
+## How to use ## 
+
+Make sure you have a SERPER_API_KEY, a MONGO_URI, and an OPENAI_API_KEY

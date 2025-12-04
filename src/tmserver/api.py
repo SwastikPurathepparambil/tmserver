@@ -1,9 +1,10 @@
-import os
-from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, status, Depends, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Extra
-from typing import Optional
+from datetime import datetime
+from typing import List
+from bson import ObjectId
+import os
+import uvicorn
 from latest_ai_development.main import run as run_crew
 
 import time
@@ -35,6 +36,8 @@ class RunPayload(BaseModel):
 
     class Config:
         extra = Extra.allow  # keep any unmodeled extras if they appear
+
+# ========= Sample Route =========
 
 @app.post("/run")
 def run_endpoint(payload: RunPayload):
@@ -69,3 +72,7 @@ def run_endpoint(payload: RunPayload):
         resume_base64=payload.resume.base64 if payload.resume else None,
     )
     return {"ok": True, "result": str(result)}
+
+# ========= End of Sample Route =========
+
+# ========= AUTH ROUTES =========
