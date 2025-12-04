@@ -14,6 +14,7 @@ class Database:
     database = None
     users_set = None
     resumes_set = None
+    tailored_resumes_collection = None
 
 db = Database()
 
@@ -35,6 +36,7 @@ async def connect_to_db_mongo():
         db.database = db.client[db_name]
         db.users_set = db.database.users
         db.resumes_set = db.database.resumes
+        db.tailored_resumes_collection = db.database.tailored_resumes
         await create_indexes()
     except ConnectionFailure as e1:
         print(f"Connection Failure: {e1}")

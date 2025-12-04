@@ -1,18 +1,25 @@
-from fastapi import FastAPI, HTTPException, status, Depends, Response, Request
-from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Dict, Any, Optional
-from bson import ObjectId
+import io
 import os
-import uvicorn
-from contextlib import asynccontextmanager   
-
-from tmserver.db import get_database, Database,connect_to_db_mongo, disconnect_mongo
-from tmserver.models import UserResponse
-from tmserver.auth import verify_google_token, create_access_token, get_current_user_id, optional_get_current_user_id
-
 import time
 import asyncio
+from typing import Dict, Any, Optional, List
+
+from bson import ObjectId
+from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+import uvicorn
+
+from tmserver.db import get_database, Database, connect_to_db_mongo, disconnect_mongo
+from tmserver.models import UserResponse
+from tmserver.auth import (
+    verify_google_token,
+    create_access_token,
+    get_current_user_id,
+    optional_get_current_user_id,
+)
 
 # load_dotenv()  # loads OPENAI_API_KEY, etc.
 ENV = os.getenv("ENVIRONMENT", "dev")
@@ -96,7 +103,6 @@ async def get_me(user_id: str | None = Depends(optional_get_current_user_id), db
         return None
     
     user = await db.users_set.find_one({"_id": ObjectId(user_id)})
-    print(user)
     if not user:
         raise HTTPException(status_code=404, detail="Not Found")
 
@@ -117,6 +123,64 @@ def logout(response: Response):
         samesite="lax",
     )
     return {"ok": True}
+
+# ========= RESUME ROUTES =========
+
+@app.get("/tailored-resumes")
+async def list_tailored_resumes(
+    user_id: str = Depends(get_current_user_id),
+    db: Database = Depends(get_db),
+):
+    cursor = db.tailored_resumes_collection.find(
+        {"user_id": user_id}
+    ).sort("createdAt", -1)
+
+    items: List[dict] = []
+    async for doc in cursor:
+        items.append(
+            {
+                "id": str(doc["_id"]),
+                "filename": doc.get("filename", ""),
+                "jobLink": doc.get("jobLink"),
+                "createdAt": doc.get("createdAt"),
+            }
+        )
+
+    return items
+
+
+@app.get("/tailored-resumes/{resume_id}/pdf")
+async def get_tailored_resume_pdf(
+    resume_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: Database = Depends(get_db),
+):
+    if not ObjectId.is_valid(resume_id):
+        raise HTTPException(status_code=400, detail="Invalid resume ID")
+
+    doc = await db.tailored_resumes_collection.find_one(
+        {
+            "_id": ObjectId(resume_id),
+            "user_id": user_id,  # 🔒 only allow owner
+        }
+    )
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Tailored resume not found")
+
+    pdf_bytes = bytes(doc["pdfData"])
+    filename = doc.get("filename", "tailored_resume.pdf")
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
+
+# ========= KEY ROUTE: TAILOR =========
+
+
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
