@@ -14,14 +14,16 @@ from fastapi.responses import StreamingResponse
 import uvicorn
 
 from tmserver.db import get_database, Database, connect_to_db_mongo, disconnect_mongo
-from tmserver.models import TailorPayload, UserResponse
+from tmserver.models import TailorPayload, UserResponse, WorkshopRequest, WorkshopResponse
 from tmserver.auth import (
     verify_google_token,
     create_access_token,
     get_current_user_id,
     optional_get_current_user_id,
 )
-from tmserver.run_tailor import b64_to_bytes, run_tailor_pipeline
+from tmserver.run_tailor import run_tailor_pipeline
+from tmserver.run_workshop import run_workshop_pipeline
+from tmserver.helpers import b64_to_bytes
 
 # load_dotenv()  # loads OPENAI_API_KEY, etc.
 ENV = os.getenv("ENVIRONMENT", "dev")
@@ -227,6 +229,40 @@ async def tailor_endpoint(
             "pdfBase64": pdf_base64,
             "pdfUrl": f"/resumes/{inserted.inserted_id}/pdf",  # if you add such a route
         },
+    }
+
+# ========= KEY ROUTE: WORKSHOP =========
+
+@app.post("/workshop")
+async def workshop_endpoint(
+    payload: WorkshopRequest,
+    user_id: str = Depends(get_current_user_id),  # or optional_get_current_user_id if you want to allow anon
+):
+    # Decode uploaded resume (ephemeral, same pattern as /tailor)
+    resume_bytes: Optional[bytes] = None
+    resume_mime: Optional[str] = None
+    resume_name: Optional[str] = None
+
+    if payload.resume and payload.resume.base64:
+        resume_bytes = b64_to_bytes(payload.resume.base64)
+        resume_mime = payload.resume.type
+        resume_name = payload.resume.name
+
+    # Run workshop pipeline (sync)
+    workshop_result: WorkshopResponse = run_workshop_pipeline(
+        workshop_focus=payload.workshopFocus,
+        job_link=payload.jobLink,
+        work_experience=payload.workExperience,
+        resume_bytes=resume_bytes,
+        resume_mime=resume_mime,
+        resume_name=resume_name,
+    )
+
+    # We keep the same outer shape as /tailor:
+    # { ok: true, result: { questions, context } }
+    return {
+        "ok": True,
+        "result": workshop_result,
     }
 
 

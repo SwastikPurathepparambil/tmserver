@@ -47,3 +47,23 @@ class TailoredResume(BaseModel):
     headline: str
     summary: str
     sections: List[ResumeSection]
+
+class WorkshopRequest(BaseModel):
+    workshopFocus: Optional[str] = None
+    jobLink: Optional[str] = None
+    workExperience: Optional[str] = None
+    # Changed from Uploaded Resume to ResumeUpload
+    resume: Optional[ResumeUpload] = None
+    submittedAt: Optional[str] = None  # or datetime if you prefer
+
+
+class WorkshopResponseContext(BaseModel):
+    resumeName: Optional[str] = None
+    workshopFocus: Optional[str] = None
+    jobLink: Optional[str] = None
+    hasExtraNotes: bool = False
+
+
+class WorkshopResponse(BaseModel):
+    questions: List[str]
+    context: WorkshopResponseContext

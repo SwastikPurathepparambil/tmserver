@@ -174,3 +174,39 @@ tasks:
     context: ["research_task", "profile_task"]
     agent: resume_strategist
     async_execution: false
+
+  resume_workshop_questions_task:
+    agent: workshop_facilitator
+    description: >
+      Using the provided inputs, generate a focused list of reflection questions
+      that will help the candidate meaningfully improve their resume.
+
+      You are given:
+      - workshop_focus: A short description of what the candidate is aiming for
+        (e.g. "software engineering internships", "data roles in fintech").
+      - job_posting_url: A URL to a representative job posting (may be empty).
+      - personal_writeup: Free-form notes about the candidate's background and goals.
+      - Tools:
+        - read_resume: to read the candidate's resume text, if available.
+        - read_workexp: to read their work-experience notes.
+        - scrape_tool / search_tool: to inspect the job posting or related roles.
+
+      Your output must:
+      - Ask 7–10 specific, action-oriented questions.
+      - Reference concrete parts of their experience when possible.
+      - Tie questions back to workshop_focus and/or the job posting.
+      - Avoid generic questions like "What are your strengths?" unless customized.
+
+    expected_output: >
+      A **valid JSON object only**, with no prose before or after, of the form:
+
+      {
+        "questions": [
+          "Question 1 ...",
+          "Question 2 ...",
+          "Question 3 ..."
+        ]
+      }
+
+    output_file: null
+    # if your framework uses an "output_file" you can omit or set to null for this
