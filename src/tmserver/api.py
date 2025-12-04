@@ -51,10 +51,10 @@ app = FastAPI(title="latest_ai_development API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
 
-    # ========= TODO: ADD CORRECT URL ========
     allow_origins=[
         "http://localhost:3000", 
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "https://tailormake-git-main-swastiks-projects-db4411ca.vercel.app/"
         ],
     allow_credentials=True,
     allow_methods=["*"],
