@@ -60,6 +60,35 @@ def _extract_text_from_file(
     return f"[{filename or 'resume'} uploaded as {mime_type or ext}; text extraction not supported]"
 
 
+def _prepare_temp_files(
+    tmpdir: Path,
+    work_experience: Optional[str],
+    resume_name: Optional[str],
+    resume_mime: Optional[str],
+    resume_base64: Optional[str],
+) -> tuple[Optional[Path], Optional[Path]]:
+    """
+    Prepare temporary files for resume and work experience.
+    Returns (resume_text_path, work_exp_path).
+    """
+    resume_text_path: Optional[Path] = None
+    work_exp_path: Optional[Path] = None
+
+    # Decode resume if provided
+    if resume_base64:
+        file_bytes = _b64_to_bytes(resume_base64)
+        text = _extract_text_from_file(file_bytes, resume_mime, resume_name)
+        resume_text_path = tmpdir / "resume_text.mdx"
+        resume_text_path.write_text(text or "", encoding="utf-8")
+
+    # Save work experience as temp file
+    if work_experience:
+        work_exp_path = tmpdir / "work_experience.mdx"
+        work_exp_path.write_text(work_experience, encoding="utf-8")
+
+    return resume_text_path, work_exp_path
+
+
 def run(
     topic: str,
     work_experience: Optional[str] = None,
@@ -68,9 +97,8 @@ def run(
     resume_base64: Optional[str] = None,
 ) -> str:
     """
-    Entry used by FastAPI. Ingests payload fields (job URL, work_experience text,
-    and an optional base64 resume), builds ephemeral tooling, and runs the
-    3-task pipeline. Nothing is persisted.
+    Run the resume tailoring pipeline.
+    Returns structured comparison with ORIGINAL/SUGGESTED/REASON format.
     """
     load_dotenv()
 
@@ -81,21 +109,11 @@ def run(
     with TemporaryDirectory() as td:
         tmpdir = Path(td)
 
-        resume_text_path: Optional[Path] = None
-        work_exp_path: Optional[Path] = None
 
-        # ---- Decode resume (if provided) and extract text into a temp MDX ----
-        if resume_base64:
-            file_bytes = _b64_to_bytes(resume_base64)
-            text = _extract_text_from_file(file_bytes, resume_mime, resume_name)
 
-            resume_text_path = tmpdir / "resume_text.mdx"
-            resume_text_path.write_text(text or "", encoding="utf-8")
-
-        # ---- Save work_experience as temp MDX so tools can read/search it ----
-        if personal_writeup:
-            work_exp_path = tmpdir / "work_experience.mdx"
-            work_exp_path.write_text(personal_writeup, encoding="utf-8")
+        resume_text_path, work_exp_path = _prepare_temp_files(
+            tmpdir, personal_writeup, resume_name, resume_mime, resume_base64
+        ) #calls the helper function 
 
         # ---- Build tools bound to these ephemeral files ----
         tools = build_tools(
@@ -118,3 +136,47 @@ def run(
 
         result = crew.kickoff(inputs=inputs)
         return str(result)
+
+def run_interview_prep(
+    topic: str,
+    work_experience: Optional[str] = None,
+    resume_name: Optional[str] = None,
+    resume_mime: Optional[str] = None,
+    resume_base64: Optional[str] = None,
+) -> str:
+    """
+    Run the interview preparation pipeline.
+    Returns interview questions with hints, elevator pitch, and keywords.
+    """
+    load_dotenv()
+
+    github_url = os.getenv("GITHUB_URL", "https://github.com/joaomdmoura")
+    personal_writeup = work_experience or os.getenv("PERSONAL_WRITEUP", "")
+
+    with TemporaryDirectory() as td:
+        tmpdir = Path(td)
+
+        resume_text_path, work_exp_path = _prepare_temp_files(
+            tmpdir, personal_writeup, resume_name, resume_mime, resume_base64
+        )
+
+        tools = build_tools(
+            resume_text_path=resume_text_path,
+            work_experience_path=work_exp_path,
+        )
+
+        # Different task list for interview prep
+        crew = build_crew(
+            tool_instances=tools,
+            task_names=["research_task", "profile_task", "interview_prep_task"],
+        )
+
+        inputs = {
+            "job_posting_url": topic,
+            "github_url": github_url,
+            "personal_writeup": personal_writeup,
+        }
+
+        result = crew.kickoff(inputs=inputs)
+        return str(result)
+
