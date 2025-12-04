@@ -27,6 +27,7 @@ from tmserver.helpers import b64_to_bytes
 
 # load_dotenv()  # loads OPENAI_API_KEY, etc.
 ENV = os.getenv("ENVIRONMENT", "dev")
+IS_PROD = ENV == "prod"
 
 def get_db() -> Database:
     return get_database()
@@ -94,7 +95,7 @@ async def google_login(google_token: dict, response: Response, db: Database = De
         key="access_token",
         value=token,
         httponly=True,
-        secure=False,
+        secure=IS_PROD,
         samesite="lax",
         max_age=24 * 3600
     )
@@ -128,7 +129,7 @@ def logout(response: Response):
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        secure=False,   # same as when you set it
+        secure=IS_PROD,   # same as when you set it
         samesite="lax",
     )
     return {"ok": True}
