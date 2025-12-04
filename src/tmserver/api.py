@@ -83,6 +83,9 @@ async def google_login(google_token: dict, response: Response, db: Database = De
         )
         user_id = str(result.inserted_id)
 
+    print("=== Interview Prep Request ===")
+    print("jobLink:", payload.jobLink)
+    print("workExperience:", payload.workExperience[:100] if payload.workExperience else None)
 
     token = create_access_token({"sub": user_id})
     response.set_cookie(
