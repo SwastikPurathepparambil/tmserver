@@ -49,7 +49,12 @@ app = FastAPI(title="latest_ai_development API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+
+    # ========= TODO: ADD CORRECT URL ========
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:5173"
+        ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
