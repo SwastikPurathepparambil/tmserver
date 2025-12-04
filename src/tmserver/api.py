@@ -96,7 +96,7 @@ async def google_login(google_token: dict, response: Response, db: Database = De
         value=token,
         httponly=True,
         secure=IS_PROD,
-        samesite="lax",
+        samesite="none",
         max_age=24 * 3600
     )
     return {
@@ -130,7 +130,7 @@ def logout(response: Response):
         key="access_token",
         httponly=True,
         secure=IS_PROD,   # same as when you set it
-        samesite="lax",
+        samesite="none",
     )
     return {"ok": True}
 
