@@ -1,81 +1,176 @@
-# src/resume_tailor/config/tasks.yaml
 tasks:
   research_task:
-    description: >
-      Analyze the job posting at {job_posting_url}. Extract and label:
-      - Required skills (must-have), Preferred skills (nice-to-have)
+    description: |
+      Analyze the job posting at {job_posting_url}. Extract and clearly label:
+      - Required skills (must-have)
+      - Preferred skills (nice-to-have)
       - Responsibilities / team context
       - Tech stack (languages, frameworks, tools, cloud/services)
       - Eligibility / constraints (location, timeline, student status)
       - Exact keywords likely used by ATS
-      Keep it factual; no speculation.
-    expected_output: >
-      { "required_skills": [...], "preferred_skills": [...], "responsibilities": [...],
-        "tech_stack": [...], "eligibility": [...], "keywords": [...], "notes": "..." }
-    agent: "researcher"
+
+      IMPORTANT FORMAT RULES:
+      - You MUST return a single JSON object.
+      - Do NOT wrap the JSON in backticks.
+      - Do NOT include any markdown or commentary, just raw JSON.
+    expected_output: |
+      {
+        "required_skills": ["string", "..."],
+        "preferred_skills": ["string", "..."],
+        "responsibilities": ["string", "..."],
+        "tech_stack": ["string", "..."],
+        "eligibility": ["string", "..."],
+        "keywords": ["string", "..."],
+        "notes": "string"
+      }
+    agent: researcher
     async_execution: true
 
   profile_task:
-    description: >
+    description: |
       From the provided resume/work-experience text, identify demonstrated skills,
       projects, outcomes, and strongest stories. Map them to the research_task output
-      and note any gaps (do not invent). Use the reading/search tools over resume and
+      and note any gaps (do not invent). Use the reading tools over resume and
       work-experience content.
-    expected_output: >
-      { "skills": [...], "projects": [{"name":"...","evidence":"..."}],
-        "experience": [{"role":"...","company":"...","bullets":[...] }],
-        "outcomes": [...], "gaps": [...], "summary": "..." }
-    agent: "profiler"
+
+      IMPORTANT FORMAT RULES:
+      - You MUST return a single JSON object.
+      - Do NOT wrap the JSON in backticks.
+      - Do NOT include any markdown or commentary, just raw JSON.
+    expected_output: |
+      {
+        "skills": ["string", "..."],
+        "projects": [
+          { "name": "string", "evidence": "string" }
+        ],
+        "experience": [
+          {
+            "role": "string",
+            "company": "string",
+            "bullets": ["string", "..."]
+          }
+        ],
+        "outcomes": ["string", "..."],
+        "gaps": ["string", "..."],
+        "summary": "string"
+      }
+    agent: profiler
     async_execution: true
 
   resume_strategy_task:
-    description: >
-      Compare the ORIGINAL resume against job requirements from research_task and
-      profile data from profile_task.
-      
-      For EACH section of the resume (Summary/Objective, Education, Experience, 
-      Projects, Skills), you must:
-      1. Quote the ORIGINAL text exactly as provided - do not modify it
-      2. Write a SUGGESTED improved version tailored to the job requirements
-      3. Provide a REASON explaining why each change improves the resume
-      
-      Use this EXACT output format with these delimiters:
-      
-      ===SECTION: [section name]===
-      ORIGINAL:
-      [copy the exact original text here, unchanged]
-      
-      SUGGESTED:
-      [your improved version tailored to the job]
-      
-      REASON:
-      [1-2 sentences explaining how this change better matches the job requirements]
-      
-      Repeat for each section found in the resume.
-      
-      After all sections, provide:
-      
-      ===EVALUATION===
-      STRENGTHS:
-      - [what the resume already does well]
-      - [another strength]
-      
-      IMPROVEMENTS_NEEDED:
-      - [what needs the most work]
-      - [another area for improvement]
-      
-      TOP_RECOMMENDATIONS:
-      1. [most important actionable tip]
-      2. [second most important tip]
-      3. [third tip]
-      
-      RULES:
-      - Only use facts from profile_task; never invent experience
-      - Include relevant keywords from research_task where truthful
-      - Keep suggestions concise and impactful
-    expected_output: >
-      Structured comparison with ===SECTION: [name]=== delimiters for each 
-      resume section (containing ORIGINAL, SUGGESTED, REASON), followed by 
-      ===EVALUATION=== with STRENGTHS, IMPROVEMENTS_NEEDED, TOP_RECOMMENDATIONS.
+    description: |
+      Produce a single tailored resume using ONLY facts from the candidate materials
+      and profile_task, aligned to research_task requirements.
+
+      You are NOT outputting free-form text. You are outputting a structured JSON
+      resume that will later be rendered into a PDF.
+
+      SCHEMA (this is VERY IMPORTANT):
+
+      {
+        "contact": {
+          "name": "Full Name (string)",
+          "email": "string or null",
+          "phone": "string or null",
+          "location": "string or null",
+          "links": ["string", "..."]
+        },
+        "headline": "Short title/headline string tailored to the job",
+        "summary": "2–4 sentence professional summary aligned with the job",
+        "sections": [
+          {
+            "title": "Education",
+            "items": [
+              {
+                "institution": "string",
+                "degree": "string",
+                "location": "string or null",
+                "graduation": "string or null",
+                "coursework": ["string", "..."]
+              }
+            ]
+          },
+          {
+            "title": "Experience",
+            "items": [
+              {
+                "role": "string",
+                "company": "string",
+                "location": "string or null",
+                "start_date": "string or null",
+                "end_date": "string or null",
+                "bullets": ["string", "..."]
+              }
+            ]
+          },
+          {
+            "title": "Projects",
+            "items": [
+              {
+                "name": "string",
+                "tech_stack": ["string", "..."],
+                "bullets": ["string", "..."]
+              }
+            ]
+          }
+        ]
+      }
+
+      HARD FORMAT RULES:
+      - You MUST return EXACTLY ONE JSON object that matches the schema above.
+      - The sections MUST include at least these three titles: "Education", "Experience", "Projects".
+      - Do NOT include markdown, backticks, or any explanatory text.
+      - Use concise, impact-focused bullets under Experience/Projects (1–2 lines each).
+      - Naturally include relevant keywords from research_task only if they are true for the candidate.
+    expected_output: |
+      {
+        "contact": {
+          "name": "string",
+          "email": "string",
+          "phone": "string or null",
+          "location": "string or null",
+          "links": ["string", "..."]
+        },
+        "headline": "string",
+        "summary": "string",
+        "sections": [
+          {
+            "title": "Education",
+            "items": [
+              {
+                "institution": "string",
+                "degree": "string",
+                "location": "string or null",
+                "graduation": "string or null",
+                "coursework": ["string", "..."]
+              }
+            ]
+          },
+          {
+            "title": "Experience",
+            "items": [
+              {
+                "role": "string",
+                "company": "string",
+                "location": "string or null",
+                "start_date": "string or null",
+                "end_date": "string or null",
+                "bullets": ["string", "..."]
+              }
+            ]
+          },
+          {
+            "title": "Projects",
+            "items": [
+              {
+                "name": "string",
+                "tech_stack": ["string", "..."],
+                "bullets": ["string", "..."]
+              }
+            ]
+          }
+        ]
+      }
     context: ["research_task", "profile_task"]
-    agent: "resume_strategist"
+    agent: resume_strategist
+    async_execution: false

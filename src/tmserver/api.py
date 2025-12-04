@@ -5,21 +5,23 @@ import os
 import time
 import asyncio
 from typing import Dict, Any, Optional, List
+import base64
 
-from bson import ObjectId
+from bson import ObjectId, Binary
 from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import uvicorn
 
 from tmserver.db import get_database, Database, connect_to_db_mongo, disconnect_mongo
-from tmserver.models import UserResponse
+from tmserver.models import TailorPayload, UserResponse
 from tmserver.auth import (
     verify_google_token,
     create_access_token,
     get_current_user_id,
     optional_get_current_user_id,
 )
+from tmserver.run_tailor import b64_to_bytes, run_tailor_pipeline
 
 # load_dotenv()  # loads OPENAI_API_KEY, etc.
 ENV = os.getenv("ENVIRONMENT", "dev")
@@ -179,6 +181,53 @@ async def get_tailored_resume_pdf(
 
 # ========= KEY ROUTE: TAILOR =========
 
+@app.post("/tailor")
+async def tailor_endpoint(
+    payload: TailorPayload,
+    user_id: str = Depends(get_current_user_id)
+    ):
+    # Decode uploaded resume (ephemeral)
+    resume_bytes = None
+    resume_mime = None
+    if payload.resume and payload.resume.base64:
+        resume_bytes = b64_to_bytes(payload.resume.base64)
+        resume_mime = payload.resume.type
+
+    # Run CrewAI pipeline (sync)
+    result = run_tailor_pipeline(
+        topic=payload.jobLink or payload.topic or "",
+        work_experience=payload.workExperience,
+        resume_bytes=resume_bytes,
+        resume_mime=resume_mime,
+    )
+
+    pdf_bytes = result["pdf_bytes"]
+    filename = result["filename"]
+
+    # Save PDF in Mongo if you want it on the home page
+    db = get_database()
+    doc = {
+        "user_id": user_id,
+        "filename": filename,
+        "mime": "application/pdf",
+        "pdfData": Binary(pdf_bytes),
+        "jobLink": payload.jobLink,
+        "createdAt": datetime.utcnow(),
+    }
+    inserted = await db.tailored_resumes_collection.insert_one(doc)
+
+    # Base64 for instant preview
+    pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
+
+    return {
+        "ok": True,
+        "result": {
+            "id": str(inserted.inserted_id),
+            "filename": filename,
+            "pdfBase64": pdf_base64,
+            "pdfUrl": f"/resumes/{inserted.inserted_id}/pdf",  # if you add such a route
+        },
+    }
 
 
 

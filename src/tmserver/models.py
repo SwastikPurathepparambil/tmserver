@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 
 
 class UserResponse(BaseModel):
@@ -20,3 +20,30 @@ class TailorPayload(BaseModel):
     jobLink: Optional[str] = None
     resume: Optional[ResumeUpload] = None
     submittedAt: Optional[str] = None
+
+
+class ExperienceItem(BaseModel):
+    role: str
+    company: str
+    location: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    bullets: List[str] = []
+
+class ResumeSection(BaseModel):
+    title: str
+    # keep it loose for now; you can tighten later
+    items: List[Dict[str, Any]]
+
+class ResumeContact(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    links: List[str] = []
+
+class TailoredResume(BaseModel):
+    contact: ResumeContact
+    headline: str
+    summary: str
+    sections: List[ResumeSection]
