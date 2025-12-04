@@ -79,3 +79,51 @@ tasks:
       ===EVALUATION=== with STRENGTHS, IMPROVEMENTS_NEEDED, TOP_RECOMMENDATIONS.
     context: ["research_task", "profile_task"]
     agent: "resume_strategist"
+
+  interview_prep_task:
+    description: >
+      Based on job requirements from research_task and candidate profile from
+      profile_task, generate interview preparation materials.
+      
+      Create 6-8 likely interview questions covering:
+      - Technical skills mentioned in the job posting
+      - Behavioral questions (teamwork, challenges, problem-solving)
+      - Role-specific scenarios relevant to the position
+      
+      For EACH question, use this EXACT format:
+      
+      ===QUESTION 1===
+      Q: [The interview question]
+      WHY LIKELY: [Why the interviewer would ask this, based on job posting]
+      YOUR ANGLE: [How the candidate should approach this using their real experience]
+      ANSWER HINTS:
+      - [Specific project or experience from resume to mention]
+      - [Metric or outcome to highlight]
+      - [Skill or quality to emphasize]
+      
+      ===QUESTION 2===
+      Q: [Next question]
+      ...
+      
+      After all questions, provide:
+      
+      ===ELEVATOR PITCH===
+      [A 30-60 second pitch tailored to this specific role, using only real 
+      experience from the candidate's resume]
+      
+      ===KEYWORDS TO USE===
+      - [keyword 1]: use when discussing [specific topic]
+      - [keyword 2]: use when discussing [specific topic]
+      - [keyword 3]: use when discussing [specific topic]
+      
+      RULES:
+      - Only reference experience that actually exists in the resume/profile
+      - Match question difficulty to the seniority level of the role
+      - Prioritize questions that let the candidate showcase their real strengths
+      - Be specific in answer hints - reference actual projects/experiences by name
+    expected_output: >
+      6-8 interview questions in ===QUESTION N=== format, each containing Q, 
+      WHY LIKELY, YOUR ANGLE, and ANSWER HINTS. Followed by ===ELEVATOR PITCH=== 
+      and ===KEYWORDS TO USE=== section.
+    context: ["research_task", "profile_task"]
+    agent: "interview_coach"
